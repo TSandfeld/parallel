@@ -68,8 +68,10 @@ class Car extends Thread {
     Pos newpos;                      // New position to go to
     
     Alley alley = new Alley();
+    
+    Semaphore[][] sems;
 
-    public Car(int no, CarDisplayI cd, Gate g) {
+    public Car(int no, CarDisplayI cd, Gate g, Semaphore[][] semaphores) {
 
         this.no = no;
         this.cd = cd;
@@ -78,6 +80,8 @@ class Car extends Thread {
         barpos = cd.getBarrierPos(no);  // For later use
 
         col = chooseColor();
+        
+        this.sems = semaphores;
 
         // do not change the special settings for car no. 0
         if (no==0) {
@@ -143,13 +147,17 @@ class Car extends Thread {
                 }
                 	
                 newpos = nextPos(curpos);
+                try {
+                    sems[newpos.col][newpos.row].P();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
                 
                 //System.out.println(newpos.toString());
                 //System.out.println(no);
                 if( (newpos.row == 2 && newpos.col == 2) || (newpos.row == 1 && newpos.col == 1)) {
-                	alley.enter(no);
+                	//alley.enter(no);
                 }
-                
                 
                 //  Move to new position 
                 cd.clear(curpos);
@@ -158,6 +166,7 @@ class Car extends Thread {
                 cd.clear(curpos,newpos);
                 cd.mark(newpos,col,no);
 
+                sems[curpos.col][curpos.row].V();
                 curpos = newpos;
             }
 
@@ -175,15 +184,24 @@ public class CarControl implements CarControlI{
     CarDisplayI cd;           // Reference to GUI
     Car[]  car;               // Cars
     Gate[] gate;              // Gates
+    
+    Semaphore[][] sems = new Semaphore[12][11]; //2D array of semaphores in the map.
 
     public CarControl(CarDisplayI cd) {
         this.cd = cd;
         car  = new  Car[9];
         gate = new Gate[9];
+        
+        for(int i = 0; i < 12; i++) {
+        	for(int j = 0; j < 11; j++) {
+        		Semaphore s = new Semaphore(1);
+        		sems[i][j] = s;
+        	}
+        }
 
         for (int no = 0; no < 9; no++) {
             gate[no] = new Gate();
-            car[no] = new Car(no,cd,gate[no]);
+            car[no] = new Car(no,cd,gate[no], sems);
             car[no].start();
         } 
     }

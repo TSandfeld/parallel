@@ -73,6 +73,7 @@ class Tile extends JPanel {
     private int staintx = 0;
     private int stainty = 0;
     private int staintd = 0;
+    
 
 
     private static boolean light (Color c) {
@@ -100,8 +101,9 @@ class Tile extends JPanel {
         });
     }
 
-    public void enter(int xoff, int yoff, Color newc, char ch) {
+    public void enter(int xoff, int yoff, Color newc, char ch) {        
         users++;
+        
         if (users > 1 && keepcrash && !hadcrash) {
         	hadcrash = true;
             // Define a staint
