@@ -35,6 +35,20 @@ class Gate {
 
 }
 
+class Alley {
+	
+	public Alley() {}
+	
+	public void enter(int no) {
+		System.out.println("Car no " + no + " in.");
+	}
+	
+	public void leave(int no) {
+		System.out.println("Car no " + no + " out.");
+	}
+}
+
+
 class Car extends Thread {
 
     int basespeed = 100;             // Rather: degree of slowness
@@ -52,6 +66,8 @@ class Car extends Thread {
     int speed;                       // Current car speed
     Pos curpos;                      // Current position 
     Pos newpos;                      // New position to go to
+    
+    Alley alley = new Alley();
 
     public Car(int no, CarDisplayI cd, Gate g) {
 
@@ -127,6 +143,13 @@ class Car extends Thread {
                 }
                 	
                 newpos = nextPos(curpos);
+                
+                //System.out.println(newpos.toString());
+                //System.out.println(no);
+                if( (newpos.row == 2 && newpos.col == 2) || (newpos.row == 1 && newpos.col == 1)) {
+                	alley.enter(no);
+                }
+                
                 
                 //  Move to new position 
                 cd.clear(curpos);
