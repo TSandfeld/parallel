@@ -6,6 +6,9 @@
 
 
 import java.awt.Color;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Queue;
 
 class Gate {
 
@@ -37,14 +40,59 @@ class Gate {
 
 class Alley {
 	
+	Semaphore g = new Semaphore(1);
+	int CurrentDirection;
+	
 	public Alley() {}
+	
+	public void checkCritPos(int no, Pos position) {
+		Pos crit1 = new Pos(2,0); //for cars 1 and 2 enter
+		Pos crit2 = new Pos(1,2); //in the top - car 3,4 enter
+		Pos crit11 = new Pos(9,1); //bottom - leave for 1,2,3,4
+		
+		Pos crit3 = new Pos(9,0); // car 5-8 enter
+		Pos crit33 = new Pos(0,2); // car 5-8 leave
+		
+		switch (no) {
+		case 1: case 2: 
+			enterLeave(no, position, crit1, crit11);
+			break;
+			
+		case 3: case 4:
+			enterLeave(no, position, crit2, crit11);
+			break;
+
+		default:
+			enterLeave(no, position, crit3, crit33);
+			break;
+		}
+		
+	}
+	
+	public void enterLeave(int no, Pos position, Pos enter, Pos leave) {
+		if(position.equals(enter)) {
+			System.out.println(position + " vs " + enter);
+			enter(no);
+		} else if(position.equals(leave)) {
+			leave(no);
+		}
+	}
 	
 	public void enter(int no) {
 		System.out.println("Car no " + no + " in.");
+		try {
+			g.P();
+			
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 	
 	public void leave(int no) {
 		System.out.println("Car no " + no + " out.");
+		g.V();
 	}
 }
 
@@ -67,11 +115,11 @@ class Car extends Thread {
     Pos curpos;                      // Current position 
     Pos newpos;                      // New position to go to
     
-    Alley alley = new Alley();
+    Alley alley;
     
     Semaphore[][] sems;
 
-    public Car(int no, CarDisplayI cd, Gate g, Semaphore[][] semaphores) {
+    public Car(int no, CarDisplayI cd, Gate g, Semaphore[][] semaphores, Alley alley) {
 
         this.no = no;
         this.cd = cd;
@@ -82,6 +130,7 @@ class Car extends Thread {
         col = chooseColor();
         
         this.sems = semaphores;
+        this.alley = alley;
 
         // do not change the special settings for car no. 0
         if (no==0) {
@@ -147,17 +196,15 @@ class Car extends Thread {
                 }
                 	
                 newpos = nextPos(curpos);
+                
+                alley.checkCritPos(no, newpos);
+                
                 try {
                     sems[newpos.col][newpos.row].P();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
                 
-                //System.out.println(newpos.toString());
-                //System.out.println(no);
-                if( (newpos.row == 2 && newpos.col == 2) || (newpos.row == 1 && newpos.col == 1)) {
-                	//alley.enter(no);
-                }
                 
                 //  Move to new position 
                 cd.clear(curpos);
@@ -185,7 +232,8 @@ public class CarControl implements CarControlI{
     Car[]  car;               // Cars
     Gate[] gate;              // Gates
     
-    Semaphore[][] sems = new Semaphore[12][11]; //2D array of semaphores in the map.
+    Semaphore[][] sems = new Semaphore[12][11]; //2D array of semaphores
+    Alley alley = new Alley();
 
     public CarControl(CarDisplayI cd) {
         this.cd = cd;
@@ -201,7 +249,7 @@ public class CarControl implements CarControlI{
 
         for (int no = 0; no < 9; no++) {
             gate[no] = new Gate();
-            car[no] = new Car(no,cd,gate[no], sems);
+            car[no] = new Car(no,cd,gate[no], sems, alley);
             car[no].start();
         } 
     }
