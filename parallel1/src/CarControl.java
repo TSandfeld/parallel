@@ -51,9 +51,10 @@ class Gate {
 
 class Alley {
 
-	Semaphore g = new Semaphore(1);
-	int CurrentDirection;
-
+	Semaphore up = new Semaphore(1);
+	Semaphore down = new Semaphore(1);
+	int counter = 0;
+	int direction = 2;
 	public Alley() {
 	}
 
@@ -85,31 +86,74 @@ class Alley {
 
 	public void enterLeave(int no, Pos position, Pos enter, Pos leave) {
 		if (position.equals(enter)) {
-			System.out.println(position + " vs " + enter);
-			enter(no);
+			// System.out.println(position + " vs " + enter);
+			try {
+				enter(no);	
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				// TODO: handle exception
+			}
 		} else if (position.equals(leave)) {
 			leave(no);
 		}
 	}
 
-	public void enter(int no) {
-		System.out.println("Car no " + no + " in.");
-		try {
-			g.P();
-
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	public void enter(int no) throws InterruptedException {
+		if (counter == 0 && no > 4){
+			down.P();
+			System.out.println("counter = 0 car:"+no);
+			up.P();
+			counter++;
+			direction = 0;
+			down.V();
+		}else if (counter == 0 && no <= 4){
+			up.P();
+			System.out.println("counter = 0 car:"+no);
+			down.P();
+			counter++;
+			direction = 1;
+			up.V();
+		}else if (direction == 1 && no <= 4){
+			up.P();
+			System.out.println("going down car:"+no);
+			counter++;
+			up.V();
+		}else if (direction == 0 && no > 4){
+			down.P();
+			System.out.println("going up car:"+no);
+			counter++;
+			down.V();
+		}else if (direction == 1 && no > 4){
+			down.P();
+			System.out.println("wants up car:"+no);
+			up.P();
+			counter++;
+			direction = 0;
+			down.V();	
+			
+		}else if (direction == 0 && no <= 4){
+			up.P();
+			System.out.println("wants down car:"+no);
+			down.P();
+			counter++;
+			direction = 1;
+			up.V();		
 		}
-
+			
 	}
 
 	public void leave(int no) {
-		System.out.println("Car no " + no + " out.");
-		g.V();
+		counter--;
+		System.out.println(counter);
+		if(counter == 0 && no <= 4){
+			down.V();
+			direction = 2;
+		} else if (counter == 0 && no > 4){
+			up.V();
+			direction = 2;
+		}
 	}
 }
-
 class Barrier {
 
 	Semaphore[] semaphoreArray = new Semaphore[9];
