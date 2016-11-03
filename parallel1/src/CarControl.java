@@ -52,8 +52,11 @@ class Gate {
 class Alley {
 
 	Semaphore up = new Semaphore(1);
+	Semaphore sem = new Semaphore(1);
 	Semaphore down = new Semaphore(1);
-	int counter = 0;
+	
+	int counterUp = 0;
+	int counterDown = 0;
 	int direction = 2;
 	public Alley() {
 	}
@@ -99,61 +102,51 @@ class Alley {
 	}
 
 	public void enter(int no) throws InterruptedException {
-		if (counter == 0 && no > 4){
-			down.P();
-			System.out.println("counter = 0 car:"+no);
+		if (no > 4) {
 			up.P();
-			counter++;
-			direction = 0;
-			down.V();
-		}else if (counter == 0 && no <= 4){
-			up.P();
-			System.out.println("counter = 0 car:"+no);
-			down.P();
-			counter++;
-			direction = 1;
+			counterUp++;
+			if (counterUp == 1) {
+				sem.P();
+			}
 			up.V();
-		}else if (direction == 1 && no <= 4){
-			up.P();
-			System.out.println("going down car:"+no);
-			counter++;
-			up.V();
-		}else if (direction == 0 && no > 4){
-			down.P();
-			System.out.println("going up car:"+no);
-			counter++;
-			down.V();
-		}else if (direction == 1 && no > 4){
-			down.P();
-			System.out.println("wants up car:"+no);
-			up.P();
-			counter++;
-			direction = 0;
-			down.V();	
-			
-		}else if (direction == 0 && no <= 4){
-			up.P();
-			System.out.println("wants down car:"+no);
-			down.P();
-			counter++;
-			direction = 1;
-			up.V();		
 		}
-			
+		if (no <= 4) {
+			down.P();
+			counterDown++;
+			if (counterDown == 1) {
+				sem.P();
+			}
+			down.V();
+		}
 	}
 
 	public void leave(int no) {
-		counter--;
-		System.out.println(counter);
-		if(counter == 0 && no <= 4){
-			down.V();
-			direction = 2;
-		} else if (counter == 0 && no > 4){
-			up.V();
-			direction = 2;
+		if (no > 4) {
+			try {
+				up.P();
+				counterUp--;
+				if (counterUp == 0) {
+					sem.V();
+				}
+				up.V();
+			} catch (InterruptedException ex) {
+				ex.printStackTrace();
+			}
+		}
+		if (no <= 4) {
+			try {
+				down.P();
+				counterDown--;
+				if (counterDown == 0) {
+					sem.V();
+				}
+				down.V();
+			} catch (InterruptedException ex) {
+				ex.printStackTrace();
+			}
 		}
 	}
-}
+	}
 class Barrier {
 
 	Semaphore[] semaphoreArray = new Semaphore[9];
@@ -283,13 +276,13 @@ class Car extends Thread {
 		return pos.equals(startpos);
 	}
 
+	boolean taken = false;
 	public void run() {
 		try {
 
 			speed = chooseSpeed();
 			curpos = startpos;
 			cd.mark(curpos, col, no);
-
 			while (true) {
 				sleep(speed());
 
@@ -303,12 +296,13 @@ class Car extends Thread {
 				alley.checkCritPos(no, newpos);
 
 				if (curpos.equals(cd.getBarrierPos(no))) {
-					System.out.println(newpos.toString() + " and " + cd.getBarrierPos(no).toString());
+					//System.out.println(newpos.toString() + " and " + cd.getBarrierPos(no).toString());
 					barrier.sync(no);
 
 				}
 
 				try {
+					taken = true;
 					sems[newpos.col][newpos.row].P();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -320,12 +314,20 @@ class Car extends Thread {
 				sleep(speed());
 				cd.clear(curpos, newpos);
 				cd.mark(newpos, col, no);
-
+				taken = false;
 				sems[curpos.col][curpos.row].V();
 				curpos = newpos;
 			}
 
-		} catch (Exception e) {
+		}catch (InterruptedException e) {
+		     
+				cd.clear(curpos);
+		     if (taken){
+		    	 cd.clear(newpos);
+		    	 sems[curpos.col][curpos.row].V();
+		     }
+		     
+		}  catch (Exception e) {
 			cd.println("Exception in Car no. " + no);
 			System.err.println("Exception in Car no. " + no + ":" + e);
 			e.printStackTrace();
@@ -395,13 +397,16 @@ public class CarControl implements CarControlI {
 	}
 
 	public void removeCar(int no) {
-		cd.println("Remove Car not implemented in this version");
+		if (!car[no].isInterrupted()){
+		car[no].interrupt();
+		} 
 	}
 
 	public void restoreCar(int no) {
-		cd.println("Restore Car not implemented in this version");
-	}
-
+		car[no] = new Car(no,cd,gate[no],sems,alley,barrier);
+		car[no].start();
+		
+		}
 	/* Speed settings for testing purposes */
 
 	public void setSpeed(int no, int speed) {

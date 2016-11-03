@@ -8,62 +8,99 @@
  * This is our CarControl implementation using Monitors, also known as step 4.
  */
 
-
 import java.awt.Color;
-
 
 class Gate_M {
 
-    Semaphore g = new Semaphore(0);
-    Semaphore e = new Semaphore(1);
-    boolean isopen = false;
+	Semaphore g = new Semaphore(0);
+	Semaphore e = new Semaphore(1);
+	boolean isopen = false;
 
-    public void pass() throws InterruptedException {
-        g.P(); 
-        g.V();
-    }
+	public void pass() throws InterruptedException {
+		g.P();
+		g.V();
+	}
 
-    public void open() {
-        try { e.P(); } catch (InterruptedException e) {}
-        if (!isopen) { g.V();  isopen = true; }
-        e.V();
-    }
+	public void open() {
+		try {
+			e.P();
+		} catch (InterruptedException e) {
+		}
+		if (!isopen) {
+			g.V();
+			isopen = true;
+		}
+		e.V();
+	}
 
-    public void close() {
-        try { e.P(); } catch (InterruptedException e) {}
-        if (isopen) { 
-            try { g.P(); } catch (InterruptedException e) {}
-            isopen = false;
-        }
-        e.V();
-    }
+	public void close() {
+		try {
+			e.P();
+		} catch (InterruptedException e) {
+		}
+		if (isopen) {
+			try {
+				g.P();
+			} catch (InterruptedException e) {
+			}
+			isopen = false;
+		}
+		e.V();
+	}
 
 }
 
 class Alley_M {
-	
+
 	public boolean driving = false;
-	
-	public Alley_M() {}
-	
+	int direction = 2;
+	int counter = 0;
+
+	public Alley_M() {
+	}
+	boolean OK = false;
 	public synchronized void enter(int no) {
-		while(driving) {
-			try {
-				wait();
-			} catch (InterruptedException e) {
-				// TODO: handle exception
-				e.printStackTrace();
+		if (no > 4) {
+			while (direction == 1) {
+				try {
+					wait();
+				} catch (InterruptedException e) {
+					// TODO: handle exception
+					e.printStackTrace();
+				}
+				if (direction == 1) {
+					// get out of the loop.
+					break;
+				}
 			}
+			direction = 0;
+			counter++;
+		} else if (no <= 4) {
+			while (direction == 0) {
+				try {
+					wait();
+				} catch (InterruptedException e) {
+					// TODO: handle exception
+					e.printStackTrace();
+				}
+				if (direction == 0) {
+					// get out of the loop.
+					break;
+				}
+			}
+			direction = 1;
+			counter++;
 		}
-		
-		driving = true;
 	}
 
 	public synchronized void leave(int no) {
-		driving = false;
-		notifyAll();
+		counter--;
+		if (counter == 0) {
+			notifyAll();
+			direction = 2;
+		}
 	}
-	
+
 	public void checkCritPos(int no, Pos position) {
 		Pos crit1 = new Pos(2, 0); // for cars 1 and 2 enter
 		Pos crit2 = new Pos(1, 2); // in the top - car 3,4 enter
@@ -101,16 +138,17 @@ class Alley_M {
 }
 
 class Barrier_M {
-	
+
 	int counter = 0;
 	boolean isActive = false;
-	
-	public Barrier_M() {}
-	
+
+	public Barrier_M() {
+	}
+
 	public synchronized void sync(int num) {
-		if(isActive) {
+		if (isActive) {
 			counter++;
-			if(counter < 9) {
+			if (counter < 9) {
 				try {
 					wait();
 				} catch (InterruptedException e) {
@@ -123,7 +161,7 @@ class Barrier_M {
 				notifyAll();
 			}
 		}
-		
+
 	} // Wait for others to arrive (if barrier active)
 
 	public void on() {
@@ -132,30 +170,29 @@ class Barrier_M {
 
 	public void off() {
 		isActive = false;
-	} 
+	}
 }
 
 class Car_M extends Thread {
 
-    int basespeed = 100;             // Rather: degree of slowness
-    int variation =  50;             // Percentage of base speed
+	int basespeed = 100; // Rather: degree of slowness
+	int variation = 50; // Percentage of base speed
 
-    CarDisplayI cd;                  // GUI part
+	CarDisplayI cd; // GUI part
 
-    int no;                          // Car number
-    Pos startpos;                    // Startpositon (provided by GUI)
-    Pos barpos;                      // Barrierpositon (provided by GUI)
-    Color col;                       // Car  color
-    Gate_M mygate;                     // Gate at startposition
+	int no; // Car number
+	Pos startpos; // Startpositon (provided by GUI)
+	Pos barpos; // Barrierpositon (provided by GUI)
+	Color col; // Car color
+	Gate_M mygate; // Gate at startposition
 
+	int speed; // Current car speed
+	Pos curpos; // Current position
+	Pos newpos; // New position to go to
 
-    int speed;                       // Current car speed
-    Pos curpos;                      // Current position 
-    Pos newpos;                      // New position to go to
-
-    Semaphore[][] sems;
-    Alley_M alley;
-    Barrier_M barrier;
+	Semaphore[][] sems;
+	Alley_M alley;
+	Barrier_M barrier;
 
 	public Car_M(int no, CarDisplayI cd, Gate_M g, Semaphore[][] semaphores, Alley_M alley, Barrier_M barrier) {
 
@@ -170,173 +207,180 @@ class Car_M extends Thread {
 		this.sems = semaphores;
 		this.alley = alley;
 		this.barrier = barrier;
-		
-        // do not change the special settings for car no. 0
-        if (no==0) {
-            basespeed = 0;  
-            variation = 0; 
-            setPriority(Thread.MAX_PRIORITY); 
-        }
-    }
 
-    public synchronized void setSpeed(int speed) { 
-        if (no != 0 && speed >= 0) {
-            basespeed = speed;
-        }
-        else
-            cd.println("Illegal speed settings");
-    }
+		// do not change the special settings for car no. 0
+		if (no == 0) {
+			basespeed = 0;
+			variation = 0;
+			setPriority(Thread.MAX_PRIORITY);
+		}
+	}
 
-    public synchronized void setVariation(int var) { 
-        if (no != 0 && 0 <= var && var <= 100) {
-            variation = var;
-        }
-        else
-            cd.println("Illegal variation settings");
-    }
+	public synchronized void setSpeed(int speed) {
+		if (no != 0 && speed >= 0) {
+			basespeed = speed;
+		} else
+			cd.println("Illegal speed settings");
+	}
 
-    synchronized int chooseSpeed() { 
-        double factor = (1.0D+(Math.random()-0.5D)*2*variation/100);
-        return (int) Math.round(factor*basespeed);
-    }
+	public synchronized void setVariation(int var) {
+		if (no != 0 && 0 <= var && var <= 100) {
+			variation = var;
+		} else
+			cd.println("Illegal variation settings");
+	}
 
-    private int speed() {
-        // Slow down if requested
-        final int slowfactor = 3;  
-        return speed * (cd.isSlow(curpos)? slowfactor : 1);
-    }
+	synchronized int chooseSpeed() {
+		double factor = (1.0D + (Math.random() - 0.5D) * 2 * variation / 100);
+		return (int) Math.round(factor * basespeed);
+	}
 
-    Color chooseColor() { 
-        return Color.blue; // You can get any color, as longs as it's blue 
-    }
+	private int speed() {
+		// Slow down if requested
+		final int slowfactor = 3;
+		return speed * (cd.isSlow(curpos) ? slowfactor : 1);
+	}
 
-    Pos nextPos(Pos pos) {
-        // Get my track from display
-        return cd.nextPos(no,pos);
-    }
+	Color chooseColor() {
+		return Color.blue; // You can get any color, as longs as it's blue
+	}
 
-    boolean atGate(Pos pos) {
-        return pos.equals(startpos);
-    }
+	Pos nextPos(Pos pos) {
+		// Get my track from display
+		return cd.nextPos(no, pos);
+	}
 
-   public void run() {
-        try {
+	boolean atGate(Pos pos) {
+		return pos.equals(startpos);
+	}
 
-            speed = chooseSpeed();
-            curpos = startpos;
-            cd.mark(curpos,col,no);
+	public void run() {
+		try {
 
-            while (true) { 
-                sleep(speed());
-  
-                if (atGate(curpos)) { 
-                    mygate.pass(); 
-                    speed = chooseSpeed();
-                }
-                	
-                newpos = nextPos(curpos);
-                
-                alley.checkCritPos(no, newpos);
-                
-                if (curpos.equals(cd.getBarrierPos(no))) {
-					System.out.println(newpos.toString() + " and " + cd.getBarrierPos(no).toString());
+			speed = chooseSpeed();
+			curpos = startpos;
+			cd.mark(curpos, col, no);
+
+			while (true) {
+				sleep(speed());
+
+				if (atGate(curpos)) {
+					mygate.pass();
+					speed = chooseSpeed();
+				}
+
+				newpos = nextPos(curpos);
+
+				alley.checkCritPos(no, newpos);
+
+				if (curpos.equals(cd.getBarrierPos(no))) {
+					// System.out.println(newpos.toString() + " and " +
+					// cd.getBarrierPos(no).toString());
 					barrier.sync(no);
 				}
-                
-                try {
+
+				try {
 					sems[newpos.col][newpos.row].P();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-                
-                //  Move to new position 
-                cd.clear(curpos);
-                cd.mark(curpos,newpos,col,no);
-                sleep(speed());
-                cd.clear(curpos,newpos);
-                cd.mark(newpos,col,no);
+
+				// Move to new position
+				cd.clear(curpos);
+				cd.mark(curpos, newpos, col, no);
+				sleep(speed());
+				cd.clear(curpos, newpos);
+				cd.mark(newpos, col, no);
 
 				sems[curpos.col][curpos.row].V();
-                curpos = newpos;
-            }
+				curpos = newpos;
+			}
 
-        } catch (Exception e) {
-            cd.println("Exception in Car no. " + no);
-            System.err.println("Exception in Car no. " + no + ":" + e);
-            e.printStackTrace();
-        }
-    }
+		} catch (InterruptedException e) {
+		     
+			cd.clear(curpos);
+		} 
+		     catch (Exception e) {
+			cd.println("Exception in Car no. " + no);
+			System.err.println("Exception in Car no. " + no + ":" + e);
+			e.printStackTrace();
+		}
+	}
 
 }
 
-public class CarControl_Monitor implements CarControlI{
+public class CarControl_Monitor implements CarControlI {
 
-    CarDisplayI cd;           // Reference to GUI
-    Car_M[]  car;               // Cars
-    Gate_M[] gate;              // Gates
-    
-    Semaphore[][] sems = new Semaphore[12][11];
-    Alley_M alley = new Alley_M();
-    Barrier_M barrier = new Barrier_M();
+	CarDisplayI cd; // Reference to GUI
+	Car_M[] car; // Cars
+	Gate_M[] gate; // Gates
 
-    public CarControl_Monitor(CarDisplayI cd) {
-        this.cd = cd;
-        car  = new  Car_M[9];
-        gate = new Gate_M[9];
+	Semaphore[][] sems = new Semaphore[12][11];
+	Alley_M alley = new Alley_M();
+	Barrier_M barrier = new Barrier_M();
 
-        for (int i = 0; i < 12; i++) {
+	public CarControl_Monitor(CarDisplayI cd) {
+		this.cd = cd;
+		car = new Car_M[9];
+		gate = new Gate_M[9];
+
+		for (int i = 0; i < 12; i++) {
 			for (int j = 0; j < 11; j++) {
 				Semaphore s = new Semaphore(1);
 				sems[i][j] = s;
 			}
 		}
-        
-        for (int no = 0; no < 9; no++) {
-            gate[no] = new Gate_M();
-            car[no] = new Car_M(no,cd,gate[no], sems, alley, barrier);
-            car[no].start();
-        } 
-    }
 
-   public void startCar(int no) {
-        gate[no].open();
-    }
+		for (int no = 0; no < 9; no++) {
+			gate[no] = new Gate_M();
+			car[no] = new Car_M(no, cd, gate[no], sems, alley, barrier);
+			car[no].start();
+		}
+	}
 
-    public void stopCar(int no) {
-        gate[no].close();
-    }
+	public void startCar(int no) {
+		gate[no].open();
+	}
 
-    public void barrierOn() { 
-        barrier.on();
-    }
+	public void stopCar(int no) {
+		gate[no].close();
+	}
 
-    public void barrierOff() { 
-        barrier.off();
-    }
+	public void barrierOn() {
+		barrier.on();
+	}
 
-    public void barrierSet(int k) { 
-        cd.println("Barrier threshold setting not implemented in this version");
-         // This sleep is for illustrating how blocking affects the GUI
-        // Remove when feature is properly implemented.
-        try { Thread.sleep(3000); } catch (InterruptedException e) { }
-     }
+	public void barrierOff() {
+		barrier.off();
+	}
 
-    public void removeCar(int no) { 
-        cd.println("Remove Car not implemented in this version");
-    }
+	public void barrierSet(int k) {
+		cd.println("Barrier threshold setting not implemented in this version");
+		// This sleep is for illustrating how blocking affects the GUI
+		// Remove when feature is properly implemented.
+		try {
+			Thread.sleep(3000);
+		} catch (InterruptedException e) {
+		}
+	}
 
-    public void restoreCar(int no) { 
-        cd.println("Restore Car not implemented in this version");
-    }
+	public void removeCar(int no) {
+				car[no].interrupt();
+			
 
-    /* Speed settings for testing purposes */
+	}
 
-    public void setSpeed(int no, int speed) { 
-        car[no].setSpeed(speed);
-    }
+	public void restoreCar(int no) {
+	}
 
-    public void setVariation(int no, int var) { 
-        car[no].setVariation(var);
-    }
+	/* Speed settings for testing purposes */
+
+	public void setSpeed(int no, int speed) {
+		car[no].setSpeed(speed);
+	}
+
+	public void setVariation(int no, int var) {
+		car[no].setVariation(var);
+	}
 
 }
