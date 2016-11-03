@@ -68,10 +68,7 @@ class Alley_M {
 					// TODO: handle exception
 					e.printStackTrace();
 				}
-				if (direction == 1) {
-					// get out of the loop.
-					break;
-				}
+				
 			}
 			direction = 0;
 			counter++;
@@ -82,10 +79,6 @@ class Alley_M {
 				} catch (InterruptedException e) {
 					// TODO: handle exception
 					e.printStackTrace();
-				}
-				if (direction == 0) {
-					// get out of the loop.
-					break;
 				}
 			}
 			direction = 1;
