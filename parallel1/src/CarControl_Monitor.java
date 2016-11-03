@@ -161,8 +161,9 @@ class Barrier_M {
 		isActive = true;
 	} // Activate barrier
 
-	public void off() {
+	public synchronized void off() {
 		isActive = false;
+		notifyAll();
 	}
 }
 

@@ -163,6 +163,9 @@ class Barrier {
 		if (isActive) {
 			checkCars();
 			semaphoreArray[num].P();
+			if (!isActive){
+				semaphoreArray[num].V();
+			}
 		}
 
 	} // Wait for others to arrive (if barrier active)
@@ -178,18 +181,22 @@ class Barrier {
 	}
 
 	public void on() throws InterruptedException {
-		isActive = true;
+		if (!isActive)
 		for (int i = 0; i < semaphoreArray.length; i++) {
 			semaphoreArray[i].P();
+			isActive = true;
 		}
+		
 	} // Activate barrier
 
 	public void off() {
-		isActive = false;
+		if (isActive){
 		for (int i = 0; i < semaphoreArray.length; i++) {
 			semaphoreArray[i].V();
 		}
 		counter = 0;
+		isActive = false;
+		}
 	} // Deactivate barrier
 
 }
