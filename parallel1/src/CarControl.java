@@ -5,6 +5,7 @@
 //Hans Henrik Lovengreen    Oct 3, 2016
 
 import java.awt.Color;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Queue;
@@ -54,11 +55,14 @@ class Alley {
 	Semaphore up = new Semaphore(1);
 	Semaphore sem = new Semaphore(1);
 	Semaphore down = new Semaphore(1);
-	
+
 	int counterUp = 0;
 	int counterDown = 0;
 	int direction = 2;
-	public Alley() {
+	Car[] cars;
+
+	public Alley(Car[] cars) {
+		this.cars = cars;
 	}
 
 	public void checkCritPos(int no, Pos position) {
@@ -90,51 +94,63 @@ class Alley {
 	public void enterLeave(int no, Pos position, Pos enter, Pos leave) {
 		if (position.equals(enter)) {
 			// System.out.println(position + " vs " + enter);
-			try {
-				enter(no);	
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-				// TODO: handle exception
-			}
+				enter(no);
+			
 		} else if (position.equals(leave)) {
 			leave(no);
 		}
 	}
 
-	public void enter(int no) throws InterruptedException {
+	public void enter(int no) {
+	try{
 		if (no > 4) {
 			up.P();
+			cars[no].collectedSem.add(up);
 			counterUp++;
 			if (counterUp == 1) {
 				sem.P();
+				cars[no].collectedSem.add(sem);
 			}
 			up.V();
+			cars[no].collectedSem.remove(up);
 		}
 		if (no <= 4) {
 			down.P();
+			cars[no].collectedSem.add(down);		
 			counterDown++;
 			if (counterDown == 1) {
 				sem.P();
+				cars[no].collectedSem.add(sem);
 			}
 			down.V();
+			cars[no].collectedSem.remove(down);
 		}
+		cars[no].isInAlley = true;
+	} catch (InterruptedException e){
+		cars[no].interruptCar(false);
+	}
 	}
 
 	public void leave(int no) {
 		if (no > 4) {
-				counterUp--;
-				if (counterUp == 0) {
-					sem.V();
-				}
+			counterUp--;
+			if (counterUp == 0) {
+				sem.V();
+				cars[no].collectedSem.remove(sem);
+			}
 		}
 		if (no <= 4) {
-				counterDown--;
-				if (counterDown == 0) {
-					sem.V();
-				}
+			counterDown--;
+			if (counterDown == 0) {
+				sem.V();
+				cars[no].collectedSem.remove(sem);
+			}
 		}
+		cars[no].isInAlley = false;
 	}
-	}
+
+}
+
 class Barrier {
 
 	Semaphore[] semaphoreArray = new Semaphore[9];
@@ -151,7 +167,7 @@ class Barrier {
 		if (isActive) {
 			checkCars();
 			semaphoreArray[num].P();
-			if (!isActive){
+			if (!isActive) {
 				semaphoreArray[num].V();
 			}
 		}
@@ -170,20 +186,20 @@ class Barrier {
 
 	public void on() throws InterruptedException {
 		if (!isActive)
-		for (int i = 0; i < semaphoreArray.length; i++) {
-			semaphoreArray[i].P();
-			isActive = true;
-		}
-		
+			for (int i = 0; i < semaphoreArray.length; i++) {
+				semaphoreArray[i].P();
+				isActive = true;
+			}
+
 	} // Activate barrier
 
 	public void off() {
-		if (isActive){
-		for (int i = 0; i < semaphoreArray.length; i++) {
-			semaphoreArray[i].V();
-		}
-		counter = 0;
-		isActive = false;
+		if (isActive) {
+			for (int i = 0; i < semaphoreArray.length; i++) {
+				semaphoreArray[i].V();
+			}
+			counter = 0;
+			isActive = false;
 		}
 	} // Deactivate barrier
 
@@ -208,8 +224,10 @@ class Car extends Thread {
 
 	Alley alley;
 	Barrier barrier;
-
+	boolean isInAlley = false;
+	boolean removed = false;
 	Semaphore[][] sems;
+	ArrayList<Semaphore> collectedSem = new ArrayList<Semaphore>();
 
 	public Car(int no, CarDisplayI cd, Gate g, Semaphore[][] semaphores, Alley alley, Barrier barrier) {
 
@@ -224,7 +242,6 @@ class Car extends Thread {
 		this.sems = semaphores;
 		this.alley = alley;
 		this.barrier = barrier;
-
 		// do not change the special settings for car no. 0
 		if (no == 0) {
 			basespeed = 0;
@@ -273,14 +290,18 @@ class Car extends Thread {
 
 	public void run() {
 		boolean isMoving = false;
+		
 		try {
-
+			
 			speed = chooseSpeed();
 			curpos = startpos;
 			cd.mark(curpos, col, no);
+			
 			while (true) {
+			if (removed){
+				this.interrupt();
+			}
 				sleep(speed());
-
 				if (atGate(curpos)) {
 					mygate.pass();
 					speed = chooseSpeed();
@@ -291,7 +312,8 @@ class Car extends Thread {
 				alley.checkCritPos(no, newpos);
 
 				if (curpos.equals(cd.getBarrierPos(no))) {
-					//System.out.println(newpos.toString() + " and " + cd.getBarrierPos(no).toString());
+					// System.out.println(newpos.toString() + " and " +
+					// cd.getBarrierPos(no).toString());
 					barrier.sync(no);
 
 				}
@@ -314,19 +336,25 @@ class Car extends Thread {
 				curpos = newpos;
 			}
 
-		}catch (InterruptedException e) {
-	    	 	sems[curpos.col][curpos.row].V();
-				cd.clear(curpos);
-		     if (isMoving){
-		    	 cd.clear(newpos);
-		    	 sems[newpos.col][newpos.row].V();
-		    	System.out.println(sems[newpos.col][newpos.row].toString()); 
-		     }
-		     
-		}  catch (Exception e) {
+		} catch (InterruptedException e) {
+			interruptCar(isMoving);
+
+		} catch (Exception e) {
 			cd.println("Exception in Car no. " + no);
 			System.err.println("Exception in Car no. " + no + ":" + e);
 			e.printStackTrace();
+		}
+	}
+
+	public void interruptCar(boolean isMoving) {
+		cd.clear(newpos);
+		sems[newpos.col][newpos.row].V();
+		if (isMoving) {
+			sems[curpos.col][curpos.row].V();
+			cd.clear(curpos);
+		}
+		if (isInAlley) {
+			alley.leave(no);
 		}
 	}
 
@@ -339,14 +367,14 @@ public class CarControl implements CarControlI {
 	Gate[] gate; // Gates
 
 	Semaphore[][] sems = new Semaphore[12][11]; // 2D array of semaphores
-	Alley alley = new Alley();
+	Alley alley;
 	Barrier barrier = new Barrier();
 
 	public CarControl(CarDisplayI cd) {
 		this.cd = cd;
 		car = new Car[9];
 		gate = new Gate[9];
-
+		alley = new Alley(car);
 		for (int i = 0; i < 12; i++) {
 			for (int j = 0; j < 11; j++) {
 				Semaphore s = new Semaphore(1);
@@ -393,18 +421,17 @@ public class CarControl implements CarControlI {
 	}
 
 	public void removeCar(int no) {
-		if (car[no] != null){
-		car[no].interrupt();
-		car[no] = null;
-		} 
+		if (car[no].isAlive()) {
+			car[no].removed = true;
+		}
 	}
 
 	public void restoreCar(int no) {
-		if (car[no] == null){
-		car[no] = new Car(no,cd,gate[no],sems,alley,barrier);
-		car[no].start();
+		if (!car[no].isAlive()) {
+			car[no] = new Car(no, cd, gate[no], sems, alley, barrier);
+			car[no].start();
 		}
-		}
+	}
 	/* Speed settings for testing purposes */
 
 	public void setSpeed(int no, int speed) {

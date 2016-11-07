@@ -58,7 +58,6 @@ class Alley_M {
 
 	public Alley_M() {
 	}
-	boolean OK = false;
 	public synchronized void enter(int no) {
 		if (no > 4) {
 			while (direction == 1) {
@@ -141,14 +140,14 @@ class Barrier_M {
 	public synchronized void sync(int num) {
 		if (isActive) {
 			counter++;
-			if (counter < 9) {
+			while (counter < 9) {
 				try {
 					wait();
 				} catch (InterruptedException e) {
 					// TODO: handle exception
 					e.printStackTrace();
 				}
-			} else {
+			} if (counter == 9)  {
 				System.out.println(counter);
 				counter = 0;
 				notifyAll();
