@@ -122,28 +122,16 @@ class Alley {
 
 	public void leave(int no) {
 		if (no > 4) {
-			try {
-				up.P();
 				counterUp--;
 				if (counterUp == 0) {
 					sem.V();
 				}
-				up.V();
-			} catch (InterruptedException ex) {
-				ex.printStackTrace();
-			}
 		}
 		if (no <= 4) {
-			try {
-				down.P();
 				counterDown--;
 				if (counterDown == 0) {
 					sem.V();
 				}
-				down.V();
-			} catch (InterruptedException ex) {
-				ex.printStackTrace();
-			}
 		}
 	}
 	}
@@ -283,8 +271,8 @@ class Car extends Thread {
 		return pos.equals(startpos);
 	}
 
-	boolean taken = false;
 	public void run() {
+		boolean isMoving = false;
 		try {
 
 			speed = chooseSpeed();
@@ -309,7 +297,7 @@ class Car extends Thread {
 				}
 
 				try {
-					taken = true;
+					isMoving = true;
 					sems[newpos.col][newpos.row].P();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -321,17 +309,18 @@ class Car extends Thread {
 				sleep(speed());
 				cd.clear(curpos, newpos);
 				cd.mark(newpos, col, no);
-				taken = false;
 				sems[curpos.col][curpos.row].V();
+				isMoving = false;
 				curpos = newpos;
 			}
 
 		}catch (InterruptedException e) {
-		     
+	    	 	sems[curpos.col][curpos.row].V();
 				cd.clear(curpos);
-		     if (taken){
+		     if (isMoving){
 		    	 cd.clear(newpos);
-		    	 sems[curpos.col][curpos.row].V();
+		    	 sems[newpos.col][newpos.row].V();
+		    	System.out.println(sems[newpos.col][newpos.row].toString()); 
 		     }
 		     
 		}  catch (Exception e) {
@@ -404,15 +393,17 @@ public class CarControl implements CarControlI {
 	}
 
 	public void removeCar(int no) {
-		if (!car[no].isInterrupted()){
+		if (car[no] != null){
 		car[no].interrupt();
+		car[no] = null;
 		} 
 	}
 
 	public void restoreCar(int no) {
+		if (car[no] == null){
 		car[no] = new Car(no,cd,gate[no],sems,alley,barrier);
 		car[no].start();
-		
+		}
 		}
 	/* Speed settings for testing purposes */
 
