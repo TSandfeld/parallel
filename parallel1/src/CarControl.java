@@ -94,57 +94,59 @@ class Alley {
 	public void enterLeave(int no, Pos position, Pos enter, Pos leave) {
 		if (position.equals(enter)) {
 			// System.out.println(position + " vs " + enter);
-				enter(no);
-			
+			enter(no);
+
 		} else if (position.equals(leave)) {
-			leave(no);
+			
+			try {
+				leave(no);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 
 	public void enter(int no) {
-	try{
-		if (no > 4) {
-			up.P();
-			cars[no].collectedSem.add(up);
-			counterUp++;
-			if (counterUp == 1) {
-				sem.P();
-				cars[no].collectedSem.add(sem);
+		try {
+			if (no > 4) {
+				up.P();
+				if (counterUp == 0) {
+					sem.P();
+				}
+				counterUp++;
+				up.V();
 			}
-			up.V();
-			cars[no].collectedSem.remove(up);
-		}
-		if (no <= 4) {
-			down.P();
-			cars[no].collectedSem.add(down);		
-			counterDown++;
-			if (counterDown == 1) {
-				sem.P();
-				cars[no].collectedSem.add(sem);
+			if (no <= 4) {
+				down.P();
+				if (counterDown == 0) {
+					sem.P();
+				}
+				counterDown++;
+				down.V();
 			}
-			down.V();
-			cars[no].collectedSem.remove(down);
+			cars[no].isInAlley = true;
+		} catch (InterruptedException e) {
+			cars[no].interruptCar(false);
 		}
-		cars[no].isInAlley = true;
-	} catch (InterruptedException e){
-		cars[no].interruptCar(false);
-	}
 	}
 
-	public void leave(int no) {
+	public void leave(int no) throws InterruptedException {
 		if (no > 4) {
+			up.P();
 			counterUp--;
 			if (counterUp == 0) {
 				sem.V();
-				cars[no].collectedSem.remove(sem);
 			}
+			up.V();
 		}
 		if (no <= 4) {
+			down.P();
 			counterDown--;
 			if (counterDown == 0) {
 				sem.V();
-				cars[no].collectedSem.remove(sem);
 			}
+			down.V();
 		}
 		cars[no].isInAlley = false;
 	}
@@ -290,17 +292,17 @@ class Car extends Thread {
 
 	public void run() {
 		boolean isMoving = false;
-		
+
 		try {
-			
+
 			speed = chooseSpeed();
 			curpos = startpos;
 			cd.mark(curpos, col, no);
-			
+
 			while (true) {
-			if (removed){
-				this.interrupt();
-			}
+				if (removed) {
+					this.interrupt();
+				}
 				sleep(speed());
 				if (atGate(curpos)) {
 					mygate.pass();
@@ -354,7 +356,11 @@ class Car extends Thread {
 			cd.clear(curpos);
 		}
 		if (isInAlley) {
-			alley.leave(no);
+			try {
+				alley.leave(no);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
