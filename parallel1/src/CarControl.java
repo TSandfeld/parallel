@@ -229,8 +229,7 @@ class Car extends Thread {
 	boolean isInAlley = false;
 	boolean removed = false;
 	Semaphore[][] sems;
-	ArrayList<Semaphore> collectedSem = new ArrayList<Semaphore>();
-
+	
 	public Car(int no, CarDisplayI cd, Gate g, Semaphore[][] semaphores, Alley alley, Barrier barrier) {
 
 		this.no = no;

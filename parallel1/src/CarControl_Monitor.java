@@ -9,6 +9,7 @@
  */
 
 import java.awt.Color;
+import java.util.LinkedList;
 
 class Gate_M {
 
@@ -55,7 +56,6 @@ class Alley_M {
 	public boolean driving = false;
 	int direction = 2;
 	int counter = 0;
-
 	public Alley_M() {
 	}
 	public synchronized void enter(int no) {
@@ -162,6 +162,7 @@ class Barrier_M {
 
 	public synchronized void off() {
 		isActive = false;
+		counter = 0;
 		notifyAll();
 	}
 }
