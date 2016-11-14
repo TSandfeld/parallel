@@ -60,6 +60,8 @@ class Alley {
 	int counterDown = 0;
 	int direction = 2;
 	Car[] cars;
+	
+	boolean leave12 = false;
 
 	public Alley(Car[] cars) {
 		this.cars = cars;
@@ -72,6 +74,7 @@ class Alley {
 
 		Pos crit3 = new Pos(9, 0); // car 5-8 enter
 		Pos crit33 = new Pos(0, 2); // car 5-8 leave
+		
 
 		switch (no) {
 		case 1:
@@ -84,7 +87,7 @@ class Alley {
 			enterLeave(no, position, crit2, crit11);
 			break;
 
-		default:
+		default://Cars 5-8
 			enterLeave(no, position, crit3, crit33);
 			break;
 		}
@@ -304,6 +307,7 @@ class Car extends Thread {
 					this.interrupt();
 				}
 				sleep(speed());
+				
 				if (atGate(curpos)) {
 					mygate.pass();
 					speed = chooseSpeed();
@@ -311,13 +315,10 @@ class Car extends Thread {
 
 				newpos = nextPos(curpos);
 
-				alley.checkCritPos(no, newpos);
+				alley.checkCritPos(no, newpos); // Check if next position is a point to enter and leave alley
 
-				if (curpos.equals(cd.getBarrierPos(no))) {
-					// System.out.println(newpos.toString() + " and " +
-					// cd.getBarrierPos(no).toString());
+				if (curpos.equals(cd.getBarrierPos(no))) { // Check if current position is in front of the barrier
 					barrier.sync(no);
-
 				}
 
 				try {

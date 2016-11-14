@@ -882,8 +882,8 @@ public class Cars extends JFrame implements CarDisplayI {
         // Add control
         testwrap = new CarTestWrapper(this);
 
-        ctr = new CarControl(this);
-        //ctr = new CarControl_Monitor(this);
+        //ctr = new CarControl(this);
+        ctr = new CarControl_Monitor(this);
     }
 
     public static void main(String [] args) {

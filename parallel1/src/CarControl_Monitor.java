@@ -91,6 +91,7 @@ class Alley_M {
 			notifyAll();
 			direction = 2;
 		}
+		
 	}
 
 	public void checkCritPos(int no, Pos position) {
@@ -121,7 +122,6 @@ class Alley_M {
 
 	public void enterLeave(int no, Pos position, Pos enter, Pos leave) {
 		if (position.equals(enter)) {
-			System.out.println(position + " vs " + enter);
 			enter(no);
 		} else if (position.equals(leave)) {
 			leave(no);
@@ -130,9 +130,9 @@ class Alley_M {
 }
 
 class Barrier_M {
-
 	int counter = 0;
 	boolean isActive = false;
+	boolean breakFree = false;
 
 	public Barrier_M() {
 	}
@@ -147,9 +147,13 @@ class Barrier_M {
 					// TODO: handle exception
 					e.printStackTrace();
 				}
+				if(breakFree) {
+					break;
+				}
 			} if (counter == 9)  {
 				System.out.println(counter);
 				counter = 0;
+				breakFree = true;
 				notifyAll();
 			}
 		}
@@ -162,6 +166,8 @@ class Barrier_M {
 
 	public synchronized void off() {
 		isActive = false;
+		breakFree = true;
+		counter = 0;
 		notifyAll();
 	}
 }
@@ -358,9 +364,7 @@ public class CarControl_Monitor implements CarControlI {
 	}
 
 	public void removeCar(int no) {
-				car[no].interrupt();
 			
-
 	}
 
 	public void restoreCar(int no) {
