@@ -53,7 +53,7 @@ class Gate {
 class Alley {
 
 	Semaphore up = new Semaphore(1);
-	Semaphore sem = new Semaphore(1);
+	Semaphore dir = new Semaphore(1);
 	Semaphore down = new Semaphore(1);
 
 	int counterUp = 0;
@@ -114,7 +114,7 @@ class Alley {
 			if (no > 4) {
 				up.P();
 				if (counterUp == 0) {
-					sem.P();
+					dir.P();
 				}
 				counterUp++;
 				up.V();
@@ -122,7 +122,7 @@ class Alley {
 			if (no <= 4) {
 				down.P();
 				if (counterDown == 0) {
-					sem.P();
+					dir.P();
 				}
 				counterDown++;
 				down.V();
@@ -138,7 +138,7 @@ class Alley {
 			up.P();
 			counterUp--;
 			if (counterUp == 0) {
-				sem.V();
+				dir.V();
 			}
 			up.V();
 		}
@@ -146,7 +146,7 @@ class Alley {
 			down.P();
 			counterDown--;
 			if (counterDown == 0) {
-				sem.V();
+				dir.V();
 			}
 			down.V();
 		}
