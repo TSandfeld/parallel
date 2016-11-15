@@ -4,12 +4,12 @@
 
 //Hans Henrik Lovengreen    Oct 3, 2016
 
-public class CarTest_Monitor extends Thread {
+public class CarTest_4 extends Thread {
 
 	CarTestingI cars;
 	int testno;
 
-	public CarTest_Monitor(CarTestingI ct, int no) {
+	public CarTest_4(CarTestingI ct, int no) {
 		cars = ct;
 		testno = no;
 	}

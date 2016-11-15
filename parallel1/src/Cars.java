@@ -882,8 +882,8 @@ public class Cars extends JFrame implements CarDisplayI {
         // Add control
         testwrap = new CarTestWrapper(this);
 
-        //ctr = new CarControl(this);
-        ctr = new CarControl_Monitor(this);
+        ctr = new CarControl_135(this);
+        //ctr = new CarControl_4(this);
     }
 
     public static void main(String [] args) {
@@ -1009,7 +1009,7 @@ public class Cars extends JFrame implements CarDisplayI {
             return;
         }
         println("Run of test "+i);
-        test = new CarTest(testwrap,i);
+        test = new CarTest_135(testwrap,i);
         test.start();
     }
 
